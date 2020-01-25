@@ -125,8 +125,24 @@ class Underlying():
 class Bump():
     pass
 
-class Tree():
-    pass
+class Tree(PricingModel):
+    def __init__(self,
+                 enum_option_type,
+                 int_steps,
+                 dbl_initial_price,
+                 dbl_strike_price,
+                 dbl_time_to_maturity,
+                 dbl_riskfree_rate,
+                 dbl_volatility, 
+                 dbl_dividend_yield):
+        self.__enum_option_type = enum_option_type
+        self.__dbl_initial_price = float(dbl_initial_price)
+        self.__dbl_strike_price = float(dbl_strike_price)
+        self.__dbl_time_to_maturity = float(dbl_time_to_maturity)
+        self.__dbl_riskfree_rate = float(dbl_riskfree_rate)
+        self.__dbl_volatility = float(dbl_volatility)
+        self.__dbl_dividend_yield = float(dbl_dividend_yield)
+
 
 class BlackScholesModel(PricingModel):
     
@@ -245,7 +261,7 @@ class BlackScholesModel(PricingModel):
     def gen_greeks_basic(self):
         self.__dic_greeks = dict()
         self.__dic_greeks['SPOT_DELTA'] = self.gen_spot_delta()
-        self.__dic_
+        
         return self.__dic_greeks
 
     def gen_greeks_full(self):
@@ -614,6 +630,68 @@ def differentiate(f, x, step=0.01, method=ENUM_DERIVATIVE_METHOD.CENTRAL):
     
 def partial_derivative():
     pass
+
+
+
+
+## Implementation of Cox-Ross-Rubenstein option's pricing model.
+#
+#from scipy.stats import norm
+#import numpy as np
+#
+##OP inputs as i understand them
+#T = 0.25 # time horizon
+#M = 2 # quantity of steps
+#sigma = 0.1391*np.sqrt(0.25) # volatility
+#r0 = 0.0214
+#S0 = 2890.30 # initial underlying stock price
+#K = 2850 # strike
+#
+##size M+1 grid of stock prices simulated at time T
+#def stock_prices(S0,T,sigma,M):    
+#    res = np.zeros(M+1)    
+#    t = T*1.0/M # step
+#    u = np.exp(sigma*np.sqrt(t)) # up-factor
+#    d = 1.0/u
+#    dn = d/u
+#    res[0] = S0*np.power(u,M) 
+#    for i in range(1,M+1):
+#        res[i] = res[i-1] * dn
+#    return res
+#
+## terminal payoff from call option
+#def payoff(stock_price, K,kind='call'):
+#    epsilon = 1.0 if kind == 'call' else -1.0
+#    price = np.maximum(epsilon*(stock_price - K), 0)
+#    return price
+#
+## price for European style option using CRR
+#def european_crr(S0,K,T,r,sigma,M,kind='call'):
+#    #terminal payoff
+#    option_price = payoff(stock_prices(S0,T,sigma,M),K,kind)
+#    t = T*1.0/M # time_step
+#    df = np.exp(-r*t) #discount factor
+#    u = np.exp(sigma * np.sqrt(t))
+#    d = 1/u
+#    p = (np.exp(r*t)-d)/(u-d) # risk neutral probability for up-move        
+#    q=1-p    
+#    for time_idx in range(M): #move backward in time
+#        for j in range(M-time_idx):
+#            option_price[j] = df*(p*option_price[j]+q*option_price[j+1])
+#    return option_price[0]
+#
+##analytical check Black-Scholes formula (no dividend nor repo)
+#def european_bs(S0,K,T,r,sigma,kind='call'):
+#    df = np.exp(-r*T)
+#    F = np.exp(r*T)*S0                   # forward price with no dividend or repo
+#    m = np.log(F/K)/(sigma * np.sqrt(T)) #moneyness
+#    epsilon = 1.0 if kind == 'call' else -1.0
+#    d1 = m + 0.5*sigma*np.sqrt(T)
+#    d2 = d1 - sigma * np.sqrt(T)
+#    Nd1 = norm.cdf(epsilon*d1)
+#    Nd2 = norm.cdf(epsilon*d2)
+#    return epsilon*df*(F*Nd1-K*Nd2)
+
 
 
 

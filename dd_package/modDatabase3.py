@@ -356,12 +356,12 @@ if __name__ == '__main__':
     
 
     
-#    conn = pg2.connect(database='dvdrental', user='postgres',password='HelloWorld$1',
+#    conn = pg2.connect(database='dvdrental', user='postgres',password='test',
 #                       host='localhost', port=5432)
 #    conn = start_conn(ENUM_DATABASE_TYPE.POSTGRE,
 #                      'dvdrental',
 #                      'postgres',
-#                      'HelloWorld$1',
+#                      'test',
 #                      'localhost',
 #                      5432)
 #    cur = conn.cursor()

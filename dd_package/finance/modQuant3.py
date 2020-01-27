@@ -9,9 +9,10 @@ Created on Wed Jan 30 22:42:06 2019
 import enum
 import math
 import scipy.stats
+import numpy as np
 import pandas as pd
 import sys
-sys.path.append('E:/Program Files/Dropbox/Yuan Qing/Work/Projects/Libraries/3. Python/1. Modules/dd_package/')
+sys.path.append('E:/Program Files/Dropbox/Yuan Qing/Work/Projects/Libraries/3. Python/1. Modules/dd_package/dd_package/')
 
 ## Custom Modules
 import modUtils3 as utils
@@ -22,11 +23,14 @@ logger = utils.get_basic_logger(__name__,utils.logging.DEBUG)
 
 ## Module Enums
 @enum.unique
+class ENUM_CALL_PUT(enum.Enum):
+    PUT = 1
+    CALL = 2
+
+@enum.unique
 class ENUM_OPTION_TYPE(enum.Enum):
-    EUROPEAN_CALL = 1
-    EUROPEAN_PUT = 2
-    AMERICAN_CALL = 3
-    AMERICAN_PUT = 4
+    EUROPEAN = 1
+    AMERICAN = 2
 
 @enum.unique
 class ENUM_PRODUCT_TYPE(enum.Enum):
@@ -128,6 +132,7 @@ class Bump():
 class Tree(PricingModel):
     def __init__(self,
                  enum_option_type,
+                 enum_call_put,
                  int_steps,
                  dbl_initial_price,
                  dbl_strike_price,
@@ -136,19 +141,69 @@ class Tree(PricingModel):
                  dbl_volatility, 
                  dbl_dividend_yield):
         self.__enum_option_type = enum_option_type
+        self.__enum_call_put = enum_call_put
+        self.__int_steps = int(int_steps)
         self.__dbl_initial_price = float(dbl_initial_price)
         self.__dbl_strike_price = float(dbl_strike_price)
         self.__dbl_time_to_maturity = float(dbl_time_to_maturity)
         self.__dbl_riskfree_rate = float(dbl_riskfree_rate)
         self.__dbl_volatility = float(dbl_volatility)
         self.__dbl_dividend_yield = float(dbl_dividend_yield)
+        
+        self.__dbl_price = None
+        
+    def __len__(self):
+        pass
+    
+    def __repr__(self):
+        pass
+    
+    def __str__(self):
+        pass
+    
+    def price(self):       
+        time_step = self.__dbl_time_to_maturity / self.__int_steps
+        u = math.exp((self.__dbl_riskfree_rate - 0.5 * (self.__dbl_volatility**2)) 
+                        * time_step + self.__dbl_volatility*(time_step**0.5))
+        d = math.exp((self.__dbl_riskfree_rate - 0.5 * (self.__dbl_volatility**2)) 
+                            * time_step - self.__dbl_volatility*(time_step**0.5))
+        
+        drift = math.exp((self.__dbl_riskfree_rate-self.__dbl_dividend_yield)*time_step)
+        q = (drift - d) / (u-d)
+        
+        if self.__enum_call_put == ENUM_CALL_PUT.CALL:
+            cp = 1.0
+        elif self.__enum_call_put == ENUM_CALL_PUT.PUT:
+            cp = -1.0
+        
+        stkval = np.zeros((self.__int_steps+1, self.__int_steps+1))
+        optval = np.zeros((self.__int_steps+1, self.__int_steps+1))
+        
+        stkval[0,0] = self.__dbl_initial_price
+        for i in range(1, self.__int_steps+1):
+            stkval[i, 0] = stkval[i-1, 0] * u
+            for j in range(1, self.__int_steps+1):
+                stkval[i,j] = stkval[i-1, j-1]*d
+                
+        for j in range(self.__int_steps+1):
+            optval[self.__int_steps,j] = max(0, cp*(stkval[self.__int_steps,j]-self.__dbl_strike_price))
+            
+        for i in range(self.__int_steps-1,-1,-1):
+            for j in range(i+1):
+                optval[i, j] = (q*optval[i+1, j] + (1-q)*optval[i+1, j+1])/drift
+                if self.__enum_option_type == ENUM_OPTION_TYPE.AMERICAN:
+                    optval[i, j] = max(optval[i, j] , cp*(stkval[i, j]-self.__dbl_strike_price))
+                    
+                    
+        self.__dbl_price = optval[0,0]
+        return self.__dbl_price
 
 
 class BlackScholesModel(PricingModel):
     
     int_option_count = 0
     def __init__(self,                
-                 enum_option_type,
+                 enum_call_put,
                  dbl_initial_price,
                  dbl_strike_price,
                  dbl_time_to_maturity,
@@ -156,7 +211,7 @@ class BlackScholesModel(PricingModel):
                  dbl_volatility,
                  dbl_dividend_yield):
         
-        self.__enum_option_type = enum_option_type
+        self.__enum_call_put = enum_call_put
         self.__dbl_initial_price = float(dbl_initial_price)
         self.__dbl_strike_price = float(dbl_strike_price)
         self.__dbl_time_to_maturity = float(dbl_time_to_maturity)
@@ -175,7 +230,7 @@ class BlackScholesModel(PricingModel):
         
     def __repr__(self):
         return (self.__class__.__name__ + '(' +
-                str(self.__enum_option_type) + ',"' +
+                str(self.__enum_call_put) + ',"' +
                 str(self.__dbl_initial_price) + '",' +
                 str(self.__dbl_strike_price) + ',' +
                 str(self.__dbl_time_to_maturity) + ',' +
@@ -190,7 +245,7 @@ class BlackScholesModel(PricingModel):
         return '''
         Option #{int_option_count} \n
         
-        Type: {enum_option_type} \n
+        Type: {enum_call_put} \n
         Spot: {dbl_initial_price} \n
         Strike: {dbl_strike_price} \n
         Time To Maturity: {dbl_time_to_maturity} \n
@@ -198,7 +253,7 @@ class BlackScholesModel(PricingModel):
         Volatility: {dbl_volatility} \n
         Dividend Yield: {dbl_dividend_yield} \n    
         '''.format(int_option_count = BlackScholesModel.int_option_count,
-                    enum_option_type = self.__enum_option_type,
+                    enum_call_put = self.__enum_call_put,
                     dbl_initial_price = self.__dbl_initial_price,
                     dbl_strike_price = self.__dbl_strike_price,
                     dbl_time_to_maturity = self.__dbl_time_to_maturity,
@@ -242,14 +297,14 @@ class BlackScholesModel(PricingModel):
         return self.__dbl_riskfree_discount
 
     def price(self):
-        if self.__enum_option_type == ENUM_OPTION_TYPE.EUROPEAN_PUT:
+        if self.__enum_call_put == ENUM_CALL_PUT.PUT:
             self.__dbl_price = ((self.__dbl_strike_price * 
                                  self.__dbl_riskfree_discount *
                                  (1.0-self.__dbl_cdf_d2)) -
                                 (self.__dbl_initial_price * 
                                  self.__dbl_dividend_discount *
                                  (1.0-self.__dbl_cdf_d1)))
-        elif self.__enum_option_type == ENUM_OPTION_TYPE.EUROPEAN_CALL:
+        elif self.__enum_call_put == ENUM_CALL_PUT.CALL:
             self.__dbl_price = ((self.__dbl_initial_price * 
                                  self.__dbl_dividend_discount *
                                  self.__dbl_cdf_d1) -
@@ -289,9 +344,9 @@ class BlackScholesModel(PricingModel):
         return self.__dic_greeks
 
     def gen_spot_delta(self):
-        if self.__enum_option_type == ENUM_OPTION_TYPE.EUROPEAN_PUT:
+        if self.__enum_call_put == ENUM_CALL_PUT.PUT:
             return (self.__dbl_dividend_discount*(self.__dbl_cdf_d1 - 1.0))            
-        elif self.__enum_option_type == ENUM_OPTION_TYPE.EUROPEAN_CALL:
+        elif self.__enum_call_put == ENUM_CALL_PUT.CALL:
             return (self.__dbl_dividend_discount*self.__dbl_cdf_d1)
 
     def gen_vanna(self, variance_form = False):
@@ -303,7 +358,7 @@ class BlackScholesModel(PricingModel):
             return vanna
            
     def gen_charm(self):
-        if self.__enum_option_type == ENUM_OPTION_TYPE.EUROPEAN_PUT:
+        if self.__enum_call_put == ENUM_CALL_PUT.PUT:
             return (-self.__dbl_dividend_discount * ( 
                     (self.__dbl_pdf_d1 * ((self.__dbl_cost_of_carry/
                         (self.__dbl_volatility * self.__dbl_time_to_maturity**0.5))-
@@ -311,7 +366,7 @@ class BlackScholesModel(PricingModel):
                     ((self.__dbl_cost_of_carry-self.__dbl_riskfree_rate)*(1.0-self.__dbl_cdf_d1))
                         )
                     )
-        elif self.__enum_option_type == ENUM_OPTION_TYPE.EUROPEAN_CALL:
+        elif self.__enum_call_put == ENUM_CALL_PUT.CALL:
             return (-self.__dbl_dividend_discount * ( 
                     (self.__dbl_pdf_d1 * ((self.__dbl_cost_of_carry/
                         (self.__dbl_volatility * self.__dbl_time_to_maturity**0.5))-
@@ -386,13 +441,13 @@ class BlackScholesModel(PricingModel):
     
     def gen_theta(self, bln_theoratical = False):
         if bln_theoratical:
-            if self.__enum_option_type == ENUM_OPTION_TYPE.EUROPEAN_PUT:
+            if self.__enum_call_put == ENUM_CALL_PUT.PUT:
                 return (
                         ((-self.__dbl_initial_price * self.__dbl_dividend_discount * self.__dbl_pdf_d1 * self.__dbl_volatility)/(2.0*self.__dbl_time_to_maturity**0.5)) +        
                             ((self.__dbl_cost_of_carry-self.__dbl_riskfree_rate) * self.__dbl_initial_price * self.__dbl_dividend_discount * (1.0 - self.__dbl_cdf_d1)) + 
                             ((self.__dbl_riskfree_rate*self.__dbl_strike_price*self.__dbl_riskfree_discount*(1.0-self.__dbl_cdf_d2)))
                             )        
-            elif self.__enum_option_type == ENUM_OPTION_TYPE.EUROPEAN_CALL:
+            elif self.__enum_call_put == ENUM_CALL_PUT.CALL:
                 return (
                         ((-self.__dbl_initial_price * self.__dbl_dividend_discount * self.__dbl_pdf_d1 * self.__dbl_volatility)/(2.0*self.__dbl_time_to_maturity**0.5)) -     
                             ((self.__dbl_cost_of_carry-self.__dbl_riskfree_rate) * self.__dbl_initial_price * self.__dbl_dividend_discount * self.__dbl_cdf_d1) -
@@ -408,11 +463,11 @@ class BlackScholesModel(PricingModel):
             return theta
         
     def gen_rho(self):
-        if self.__enum_option_type == ENUM_OPTION_TYPE.EUROPEAN_PUT:
+        if self.__enum_call_put == ENUM_CALL_PUT.PUT:
             return (-self.__dbl_time_to_maturity * self.__dbl_strike_price * 
                     math.exp(-self.__dbl_riskfree_rate*self.__dbl_time_to_maturity) * 
                     (1.0-self.__dbl_cdf_d2))
-        elif self.__enum_option_type == ENUM_OPTION_TYPE.EUROPEAN_CALL:
+        elif self.__enum_call_put == ENUM_CALL_PUT.CALL:
             return (self.__dbl_time_to_maturity * self.__dbl_strike_price * 
                     math.exp(-self.__dbl_riskfree_rate*self.__dbl_time_to_maturity) * 
                     self.__dbl_cdf_d2)
@@ -697,7 +752,7 @@ def partial_derivative():
 
 if __name__ == '__main__':
     #underlying = Underlying('700 HK EQUITY')
-    bsm = BlackScholesModel(ENUM_OPTION_TYPE.EUROPEAN_CALL,
+    bsm = BlackScholesModel(ENUM_CALL_PUT.CALL,
                             382.10,
                             380.,
                             90.0/360.0,

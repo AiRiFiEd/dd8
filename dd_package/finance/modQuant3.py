@@ -23,6 +23,17 @@ logger = utils.get_basic_logger(__name__,utils.logging.DEBUG)
 
 ## Module Enums
 @enum.unique
+class ENUM_BUMP_METHOD(enum.Enum):
+    ABSOLUTE = 1
+    RELATIVE = 2
+
+@enum.unique
+class ENUM_FINITE_DIFFERENCE_METHOD(enum.Enum):
+    FORWARD = 1
+    CENTRAL = 2
+    BACKWARD = 3
+
+@enum.unique
 class ENUM_CALL_PUT(enum.Enum):
     PUT = 1
     CALL = 2
@@ -58,6 +69,33 @@ class ENUM_FORWARD_ASSET_CLASS(enum.Enum):
     FX = 2
     IR = 3
 
+class Dividend(object):
+    '''
+    Dividend object representing one dividend schdule.
+    
+    Parameters
+    ----------
+    schedule : np.ndarray
+    
+    '''
+    def __init__(self, schedule):
+        self.schedule = schedule
+        self.dividend_yield = None
+        
+    def is_ex_date(self, dte_to_check):
+        pass
+    
+    def is_payment_date(self, dte_to_check):
+        pass
+    
+    def is_declared_date(self, dte_to_check):
+        pass
+    
+    def get_div_yield(self, dte_as_at = None):
+        pass
+    
+    def get_div_pv(self, dte_as_at = None):
+        pass
 
 class Portfolio(object):
     def __init__(self):
@@ -126,8 +164,16 @@ class Underlying():
         self.__str_currency = info[0][1]
         self.__str_dvd_currency = info[0][2]
 
-class Bump():
-    pass
+class Bump(object):
+    def __init__(self, dbl_size, 
+                 enum_bump_method,
+                 enum_finite_difference_method):
+        self.size = dbl_size
+        self.bump_method = enum_bump_method
+        self.finite_difference_method = enum_finite_difference_method
+
+    def bump(self, dbl_original):
+        pass        
 
 class Tree(PricingModel):
     def __init__(self,
@@ -197,6 +243,11 @@ class Tree(PricingModel):
                     
         self.__dbl_price = optval[0,0]
         return self.__dbl_price
+    
+    def gen_vega(self, dbl_bump_size = None, enum_bump_method,
+                 enum_finite_difference_method):
+        
+        
 
 
 class BlackScholesModel(PricingModel):

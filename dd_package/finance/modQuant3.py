@@ -69,6 +69,21 @@ class ENUM_FORWARD_ASSET_CLASS(enum.Enum):
     FX = 2
     IR = 3
 
+class VolatilitySurface(object):
+    def __init__(self, npa_strikes, npa_maturities, npa_data):
+        self.strikes = npa_strikes
+        self.maturities = npa_maturities
+        self.surface = npa_data
+        
+        self.max_strike = self.strikes.max()
+        self.min_strike = self.strikes.min()
+        self.max_maturity = self.maturities.max()
+        self.min_maturity = self.maturities.min()
+    
+    def get_volatility(self, dbl_strike, dte_maturity):
+        pass
+    
+
 class Dividend(object):
     '''
     Dividend object representing one dividend schdule.
@@ -246,7 +261,7 @@ class Tree(PricingModel):
     
     def gen_vega(self, dbl_bump_size = None, enum_bump_method,
                  enum_finite_difference_method):
-        
+        pass
         
 
 

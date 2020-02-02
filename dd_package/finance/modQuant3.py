@@ -3,12 +3,21 @@
 Created on Wed Jan 30 22:42:06 2019
 
 @author: LIM YUAN QING
+@email: yuanqing87@gmail.com
+
+Classes
+-------
+VolatilitySurface
+Dividend
+
+
 """
 
 ## Python Modules
 import enum
 import math
 import scipy.stats
+import scipy.interpolate
 import numpy as np
 import pandas as pd
 import sys
@@ -16,6 +25,7 @@ sys.path.append('E:/Program Files/Dropbox/Yuan Qing/Work/Projects/Libraries/3. P
 
 ## Custom Modules
 import modUtils3 as utils
+import dd_package.modGlobal3 as glob
 #import modBloomberg3 as bbg
 
 ## Log Settings
@@ -68,12 +78,137 @@ class ENUM_FORWARD_ASSET_CLASS(enum.Enum):
     EQ = 1
     FX = 2
     IR = 3
+    
+@enum.unique
+class ENUM_VOLATILITY_STICKINESS(enum.Enum):
+    STRIKE = 1
+    MONEYNESS = 2
+    
+@enum.unique
+class ENUM_INTERPOLATION_METHOD(enum.Enum):
+    LINEAR = 1
+    CUBIC_SPLINE = 2
+
+class Schedule(object):
+    def __init__(self, npa_dates, npa_values):   
+        self.dates = npa_dates
+        self.values = npa_values    
+
+class ZeroCurve(Schedule):
+    def __init__(self, npa_dates, npa_rates):
+        super().__init__(npa_dates, npa_rates)
+        
+    def __call__(self, int_days):
+        pass
+
+class ForwardCurve(Schedule):
+    def __init__(self, npa_dates, npa_rates):
+        super().__init__(npa_dates, npa_rates)
+
+class DiscountCurve(Schedule):
+    def __init__(self, npa_dates, npa_rates):
+        super().__init__(npa_dates, npa_rates)
+
+class Interpolater1D(object):
+    def __init__(self, enum_interpolation_method=None):        
+        self.interpolation_method = enum_interpolation_method
+        
+    def __call__(self, value_to_interpolate, x, y, **kwargs):
+        if self.interpolation_method == ENUM_INTERPOLATION_METHOD.LINEAR:
+            return scipy.interpolate.interp1d(x, y, **kwargs)(value_to_interpolate)
+        elif self.interpolation_method == ENUM_INTERPOLATION_METHOD.CUBIC_SPLINE:
+            return scipy.interpolate.CubicSpline(x, y, **kwargs)(value_to_interpolate)
+
+
+
+class Forward(object):
+    """
+    Compute the forward rate
+    
+    Parameters
+    ----------
+    initial : double
+        initial spot value
+    risk_free : double
+        risk-free rate
+    time_to_maturity : double
+        time to maturity
+    asset_class : ENUM_FORWARD_ASSET_CLASS
+        enum to indicate asset class: EQ, FX, IR
+        
+    Returns
+    -------
+    float
+        forward rate
+        
+    Raises
+    ------
+    ValueError
+        when an invalid method enum is passed to function
+        
+    Source(s)
+    ---------
+    [1] Bloomberg
+    """
+    def __init__(self, initial, rates_curve, cost_of_carry):
+        pass
+
+class PresentValue(object):
+    def __init__(self, dte_reference, obj_schedule, obj_discount_curve):
+        self.reference_date = dte_reference
+        self.schedule = obj_schedule
+        self.discount_curve = obj_discount_curve
+        
+    def pv(self):
+        pass
+    
+    def npv(self):
+        pass
+    
+    
+        
+        
+
+
+
+class Dividend(Schedule):
+    '''
+    Dividend object representing one dividend schdule.
+    
+    Parameters
+    ----------
+    npa_ex_dates : np.ndarray
+        ex-dividend dates in chronological order
+    npa_amount : np.ndarray
+        dividend amount of the corresponding ex-dividend dates
+    '''
+    def __init__(self, npa_ex_dates, npa_amount):
+        super().__init__(npa_ex_dates, npa_amount)
+        
+    def is_ex_date(self, dte_to_check):
+        return dte_to_check in self.dates
+    
+    def get_div_yield(self, dte_as_at = None):
+        pass
+    
+    def get_div_pv(self, dte_as_at = None):
+        pass
 
 class VolatilitySurface(object):
-    def __init__(self, npa_strikes, npa_maturities, npa_data):
+    def __init__(self, npa_strikes, npa_maturities, npa_data, 
+                 dte_reference=None, enum_volatility_stickiness=None):
         self.strikes = npa_strikes
         self.maturities = npa_maturities
         self.surface = npa_data
+        if dte_reference:
+            self.reference_date = dte_reference
+        else:
+            self.reference_date = glob.TODAY
+        
+        if enum_volatility_stickiness:
+            self.sticky = enum_volatility_stickiness
+        else:
+            self.sticky = ENUM_VOLATILITY_STICKINESS.STRIKE
         
         self.max_strike = self.strikes.max()
         self.min_strike = self.strikes.min()
@@ -81,36 +216,35 @@ class VolatilitySurface(object):
         self.min_maturity = self.maturities.min()
     
     def get_volatility(self, dbl_strike, dte_maturity):
+        if (dte_maturity<= self.min_maturity):
+            return scipy.interpolate.CubicSpline(self.strikes, npa_data[:, 0])(dbl_strike)
+        elif (dte_maturity>=self.max_maturity):
+            return scipy.interpolate.CubicSpline(self.strikes, npa_data[:, -1])(dbl_strike)
+        else:
+            if dte_maturity in self.maturities:
+                return scipy.interpolate.CubicSpline(self.strikes, 
+                          npa_data[:, np.nonzero(self.maturities==dte_maturity)])(dbl_strike)
+            else:
+                mat_one = self.maturities[sef.maturities<dte_maturity][-1]
+                mat_two = self.maturities[sef.maturities>dte_maturity][0]
+                sigma_one = scipy.interpolate.CubicSpline(self.strikes, 
+                                npa_data[:, np.nonzero(self.maturities==mat_one)])(dbl_strike)
+                sigma_two = scipy.interpolate.CubicSpline(self.strikes, 
+                                npa_data[:, np.nonzero(self.maturities==mat_two)])(dbl_strike)
+                
+                return math.sqrt((((sigma_one**2)*(mat_one-self.reference_date).days)+
+                                  (((dte_maturity-mat_one)/(mat_two-mat_one))*
+                                   (((sigma_two**2)*(mat_two-self.reference_date).days) - 
+                                    ((sigma_one**2)*(mat_one-self.reference_date).days))))/
+                                     (dte_maturity-self.reference_date))
+    
+    def from_csv(self):
         pass
+    
+    
     
 
-class Dividend(object):
-    '''
-    Dividend object representing one dividend schdule.
-    
-    Parameters
-    ----------
-    schedule : np.ndarray
-    
-    '''
-    def __init__(self, schedule):
-        self.schedule = schedule
-        self.dividend_yield = None
-        
-    def is_ex_date(self, dte_to_check):
-        pass
-    
-    def is_payment_date(self, dte_to_check):
-        pass
-    
-    def is_declared_date(self, dte_to_check):
-        pass
-    
-    def get_div_yield(self, dte_as_at = None):
-        pass
-    
-    def get_div_pv(self, dte_as_at = None):
-        pass
+
 
 class Portfolio(object):
     def __init__(self):
@@ -664,46 +798,7 @@ class MarketConventions:
                 'JPY':'JN',
                 'EUR':'USD'}
         
-def forward(initial, risk_free, time_to_maturity, 
-                asset_class = ENUM_FORWARD_ASSET_CLASS.EQ):
-    """
-    Compute the forward rate
-    
-    Parameters
-    ----------
-    initial : double
-        initial spot value
-    risk_free : double
-        risk-free rate
-    time_to_maturity : double
-        time to maturity
-    asset_class : ENUM_FORWARD_ASSET_CLASS
-        enum to indicate asset class: EQ, FX, IR
         
-    Returns
-    -------
-    float
-        forward rate
-        
-    Raises
-    ------
-    ValueError
-        when an invalid method enum is passed to function
-        
-    Source(s)
-    ---------
-    [1] Bloomberg
-    """
-    if asset_class == ENUM_FORWARD_ASSET_CLASS.EQ:
-        pass
-    elif asset_class == ENUM_FORWARD_ASSET_CLASS.FX:
-        pass
-    elif asset_class == ENUM_FORWARD_ASSET_CLASS.IR:
-        pass
-    else:
-        raise ValueError('''asset_class must be ENUM_FORWARD_ASSET_CLASS.EQ, )
-                                ENUM_FORWARD_ASSET_CLASS.FX,
-                                ENUM_FORWARD_ASSET_CLASS.IR''')        
         
 def differentiate(f, x, step=0.01, method=ENUM_DERIVATIVE_METHOD.CENTRAL):
     """

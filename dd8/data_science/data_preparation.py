@@ -445,4 +445,15 @@ class Data(object):
         pass
     
 
+def get_data_type_enum(df_data):
+    if pd.api.types.is_numeric_dtype(df_data):
+        return ENUM_DATA_TYPE.NUMERIC
+    elif pd.api.types.is_categorical_dtype(df_data):
+        return ENUM_DATA_TYPE.CATEGORICAL
+    elif pd.api.types.is_string_dtype(df_data):
+        return ENUM_DATA_TYPE.TEXTUAL
+    elif pd.api.types.is_datetime64_any_dtype(df_data):
+        return ENUM_DATA_TYPE.DATE
+    else:
+        return None
  

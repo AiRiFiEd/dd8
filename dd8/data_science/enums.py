@@ -40,7 +40,6 @@ class ENUM_CROSS_SECTIONAL_REGRESSION_MODELS(enum.Enum):
     SUPPORT_VECTOR = 'SVR'
     RIDGE = 'Ridge'
 
-
 @enum.unique
 class ENUM_DATA_SET_TYPE(enum.Enum):
     CROSS_SECTIONAL = 1
@@ -78,5 +77,4 @@ class ENUM_CROSS_VALIDATION_METHOD(enum.Enum):
     LEAVE_P_OUT = 4
     SHUFFLE_SPLIT = 5
     STRATIFIED_K_FOLD = 6
-    STRATIFIED_SHUFFLE_SPLIT = 7   
-    
+    STRATIFIED_SHUFFLE_SPLIT = 7       

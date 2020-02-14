@@ -30,7 +30,7 @@ import time
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 
-from dd_package.modGlobal3 import LOG_PRINT_LEVEL, LOG_WRITE_LEVEL, IS_DEVELOPMENT
+from dd8.utility import LOG_PRINT_LEVEL, LOG_WRITE_LEVEL, IS_DEVELOPMENT
 
 #==================================================
 #+                                                +

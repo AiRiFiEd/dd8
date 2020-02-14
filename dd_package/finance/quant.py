@@ -88,15 +88,39 @@ class ENUM_VOLATILITY_STICKINESS(enum.Enum):
 class ENUM_INTERPOLATION_METHOD(enum.Enum):
     LINEAR = 1
     CUBIC_SPLINE = 2
+    
+@enum.unique
+class ENUM_COMPOUNDING_FREQUENCY(enum.Enum):
+    DISCRETE = 1
+    CONTINUOUS = 2
+    SIMPLE = 3    
 
 class Schedule(object):
-    def __init__(self, npa_dates, npa_values):   
+    def __init__(self, npa_dates, npa_values, str_id):   
         self.dates = npa_dates
-        self.values = npa_values    
+        self.values = npa_values
+        self.id = str_id
+        
+class RatesCurve(Schedule):
+    def __init__(self, npa_dates, npa_rates, int_day_count, 
+                 enum_compounding_frequency, str_id):
+        super().__init__(npa_dates, npa_rates, str_id)
+        self.day_count = int_day_count
+        self.compounding_frequency = enum_compounding_frequency
+        
+    def from_date(self, dte_to_interpolate):
+        pass
+    
+    def from_days(self, int_num_of_days):
+        pass
 
-class ZeroCurve(Schedule):
-    def __init__(self, npa_dates, npa_rates):
-        super().__init__(npa_dates, npa_rates)
+class ZeroCurve(RatesCurve):
+    def __init__(self, npa_dates, npa_rates,
+                 int_day_count,
+                 enum_compounding_frequency,
+                 str_name=''):
+        super().__init__(npa_dates, npa_rates, int_day_count, 
+             enum_compounding_frequency, str_id)
         
     def __call__(self, int_days):
         pass

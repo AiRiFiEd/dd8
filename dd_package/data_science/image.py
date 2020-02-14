@@ -8,9 +8,10 @@ Created on Sun Aug 25 12:45:47 2019
 import PIL
 from nltk.corpus import words
 import pytesseract
+import numpy as np
 
-from dd_package.modUtils3 import Folder, File
-from dd_package.data_science.modNLP3 import Dictionary, ENUM_DICTIONARY_LANGUAGE, ENUM_DICTIONARY_SOURCE
+from dd_package.dd_package.modUtils3 import Folder, File, find_file
+from dd_package.dd_package.data_science.modNLP3 import Dictionary, ENUM_DICTIONARY_LANGUAGE, ENUM_DICTIONARY_SOURCE
 
 class OCR(object):
     def __init__(self, image,
@@ -20,8 +21,14 @@ class OCR(object):
         self.text = ''
     
     def set_tesseract_folder(self, str_full_path = ''):
-        
-        pass
+        try:
+            if not str_full_path:
+                str_full_path = find_file('tesseract.exe')        
+            
+            pytesseract.pytesseract.tesseract_cmd = str_full_path
+            return str_full_path
+        except:
+            return None        
     
     def image_to_string(self, bln_auto_adjust_image=False,
                         enum_dictionary_source=None,
@@ -54,17 +61,33 @@ class Images(object):
     
 class Image(object):
     def __init__(self, str_file_path):
-        self.file_path = str_file_path
+        self.file_path = None
         self.image = None
         self.__lst_fwd_operations = []
         self.__lst_bwd_operations = []
         
-    def load(self):
-        self.image = PIL.Image.open(self.file_path)        
+    def from_file(self, str_file_path):        
+        self.file_path = str_file_path
+        try:
+            self.image = PIL.Image.open(self.file_path)        
+            return True
+        except:
+            return False
+    
+    def from_array(self, npa_image):
+        try:
+            self.image = PIL.Image.fromarray(npa_image)
+            return True
+        except:
+            return False
+    def to_array(self):
+        return np.array(self.image)        
         
     def show(self):
         if self.image:
             self.image.show()
+        else:
+            return None
             
     def change_brightness(self, dbl_ratio=1.0):
         enhancer = PIL.ImageEnhance.Brightness(self.image)
